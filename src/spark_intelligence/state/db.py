@@ -925,6 +925,12 @@ class StateDB:
     def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
         quoted_table = _quote_sqlite_identifier(table)
         quoted_column = _quote_sqlite_identifier(column)
+        # Validate definition is a safe SQL type (only alphanumeric, spaces, parens, and commas)
+        if not re.fullmatch(r"[A-Za-z0-9() ,]+", definition):
+            raise ValueError(f"Unsafe column definition: {definition!r}")
+        # Use parameterized approach: validate identifiers, then construct DDL safely
+        # Note: SQLite DDL does not support parameterized table/column names,
+        # so we rely on _quote_sqlite_identifier validation + definition whitelist.
         columns = {
             str(row["name"])
             for row in conn.execute(f"PRAGMA table_info({quoted_table})").fetchall()
